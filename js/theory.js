@@ -55,7 +55,7 @@ export function prettyName(name) {
 }
 
 /** Build everything the app needs for one key. */
-export function buildKey(def, mode) {
+export function buildKey(def, mode, octaves = 2) {
   const letter = def.tonic[0];
   const acc = def.tonic.slice(1);
   const alter = (acc.match(/#/g) || []).length - (acc.match(/b/g) || []).length;
@@ -73,22 +73,49 @@ export function buildKey(def, mode) {
   const sharps = notes.filter((n) => n.includes('♯')).length;
   const flats = notes.filter((n) => n.includes('♭')).length;
 
-  // Up one octave and back down: 15 notes.
-  const up = [...pattern, 12];
-  const offsets = [...up, ...up.slice(0, -1).reverse()];
-  const degrees = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0];
+  // Up N octaves and back down (1 octave = 15 notes, 2 octaves = 29).
+  const upCount = 7 * octaves + 1;
+  const upDegrees = Array.from({ length: upCount }, (_, i) => i);
+  const upOffsets = upDegrees.map((i) => pattern[i % 7] + 12 * Math.floor(i / 7));
+  const offsets = [...upOffsets, ...upOffsets.slice(0, -1).reverse()];
+  const degrees = [...upDegrees, ...upDegrees.slice(0, -1).reverse()];
   const sequence = degrees.map((d) => notes[d % 7]);
 
   return {
     tonic: def.tonic,
     tonicPc,
     mode,
+    octaves,
+    upCount,
     title: `${prettyName(def.tonic)} ${mode === 'major' ? 'Major' : 'Minor'}`,
     notes,                      // 7 spelled notes
-    octaveNotes: [...notes, notes[0]],
-    sequence,                   // 15 spelled notes, up then down
-    offsets,                    // 15 semitone offsets from the starting tonic
+    upNotes: upDegrees.map((d) => notes[d % 7]),
+    sequence,                   // spelled notes, up then down
+    offsets,                    // semitone offsets from the starting tonic
     signature: sharps ? { type: 'sharp', count: sharps } : { type: 'flat', count: flats },
-    fingering: { rh: def.rh.split('').map(Number), lh: def.lh.split('').map(Number) },
+    fingering: {
+      rh: extendFingering(def.rh, octaves, 'rh'),
+      lh: extendFingering(def.lh, octaves, 'lh'),
+    },
   };
+}
+
+/**
+ * Extend a one-octave fingering (8 digits) to N octaves.
+ * RH repeats the first 7 fingers per octave and ends on the last finger
+ * (C major: 1231234 1231234 5). LH keeps its starting finger, then repeats
+ * fingers 2–8 per octave (C major: 5 4321321 4321321), so the thumb crosses
+ * correctly at each middle tonic.
+ */
+function extendFingering(str, octaves, hand) {
+  const f = str.split('').map(Number);
+  const out = [];
+  if (hand === 'rh') {
+    for (let o = 0; o < octaves; o++) out.push(...f.slice(0, 7));
+    out.push(f[7]);
+  } else {
+    out.push(f[0]);
+    for (let o = 0; o < octaves; o++) out.push(...f.slice(1));
+  }
+  return out;
 }

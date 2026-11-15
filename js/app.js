@@ -22,6 +22,7 @@ const settings = {
   order: store.get('order', 'fifths'),
   strict: store.get('strict', false),
   keyboard: store.get('keyboard', false),
+  octaves: store.get('octaves', 2),
 };
 const save = (k, v) => { settings[k] = v; store.set(k, v); };
 
@@ -43,7 +44,7 @@ function buildDeck(keepTonic) {
       [list[i], list[j]] = [list[j], list[i]];
     }
   } else if (settings.order === 'chromatic') {
-    list.sort((a, b) => buildKey(a, settings.mode).tonicPc - buildKey(b, settings.mode).tonicPc);
+    list.sort((a, b) => buildKey(a, settings.mode, 1).tonicPc - buildKey(b, settings.mode, 1).tonicPc);
   }
   deck = list;
   deckPos = Math.max(0, keepTonic ? deck.findIndex((d) => d.tonic === keepTonic) : 0);
@@ -59,7 +60,7 @@ function go(delta) {
 }
 
 function loadKey() {
-  key = buildKey(deck[deckPos], settings.mode);
+  key = buildKey(deck[deckPos], settings.mode, settings.octaves);
   advancing = false;
   $('card').classList.remove('success');
   $('keyName').textContent = key.title;
@@ -81,8 +82,9 @@ function resetRun(message) {
 
 function startMessage() {
   const start = prettyName(key.tonic);
-  if (settings.hand === 'both') return `Start on ${start} with both hands (an octave or more apart), up and back down.`;
-  return `Start on any ${start}, play up one octave and back down.`;
+  const span = settings.octaves === 2 ? 'two octaves' : 'one octave';
+  if (settings.hand === 'both') return `Start on ${start} with both hands (an octave or more apart), up ${span} and back down.`;
+  return `Start on any ${start}, play up ${span} and back down.`;
 }
 
 function handleNote(note, fromScreen) {
@@ -136,7 +138,7 @@ function completeStep(n) {
   run.pending.clear();
   renderProgress();
   if (run.step >= key.offsets.length) return success();
-  setMsg(run.step === 8 ? 'Top of the scale — now back down.' : '');
+  setMsg(run.step === key.upCount ? 'Top of the scale — now back down.' : '');
 }
 
 function hint(n) {
@@ -147,7 +149,7 @@ function hint(n) {
 function wrong(n) {
   kb?.flash(n, 'bad');
   run.mistakes++;
-  const dot = $('progress').querySelectorAll('.pdot')[Math.min(run.step, 14)];
+  const dot = $('progress').querySelectorAll('.pdot')[Math.min(run.step, key.offsets.length - 1)];
   if (dot) { dot.classList.remove('err'); void dot.offsetWidth; dot.classList.add('err'); }
   if (settings.strict) {
     resetRun(`Wrong note — start again from ${prettyName(key.tonic)}.`);
@@ -172,8 +174,9 @@ function success() {
 // ---------- rendering ----------
 function renderProgress(partial = false) {
   const el = $('progress');
-  el.innerHTML = '<div class="prow"><span class="arrow">↑</span></div><div class="prow"><span class="arrow">↓</span></div>';
-  const rows = el.querySelectorAll('.prow');
+  el.innerHTML = '<div class="prow"><span class="arrow">↑</span><div class="pdots"></div></div>'
+    + '<div class="prow"><span class="arrow">↓</span><div class="pdots"></div></div>';
+  const rows = el.querySelectorAll('.pdots');
   key.sequence.forEach((name, i) => {
     const d = document.createElement('div');
     d.className = 'pdot';
@@ -182,7 +185,7 @@ function renderProgress(partial = false) {
       d.classList.add('current');
       if (partial) d.classList.add('half');
     }
-    rows[i < 8 ? 0 : 1].appendChild(d);
+    rows[i < key.upCount ? 0 : 1].appendChild(d);
   });
   renderStats();
 }
@@ -191,11 +194,19 @@ function renderFingerings() {
   const showRH = settings.hand !== 'left';
   const showLH = settings.hand !== 'right';
   const cells = (arr) => arr.map((x) => `<td>${x}</td>`).join('');
-  let html = `<table><tbody>
-    <tr class="notes"><th></th>${cells(key.octaveNotes)}</tr>`;
-  if (showRH) html += `<tr><th>RH</th>${cells(key.fingering.rh)}</tr>`;
-  if (showLH) html += `<tr><th>LH</th>${cells(key.fingering.lh)}</tr>`;
-  html += `</tbody></table><p class="note">Ascending shown; use the same fingers in reverse on the way down. 1 = thumb.</p>`;
+  // One table per octave so it fits on a phone; octave 2 continues from octave 1.
+  let html = '';
+  for (let o = 0; o < key.octaves; o++) {
+    const from = o === 0 ? 0 : 7 * o + 1;
+    const to = 7 * (o + 1) + 1;
+    const sl = (arr) => arr.slice(from, to);
+    if (key.octaves > 1) html += `<div class="oct-label">Octave ${o + 1}</div>`;
+    html += `<table><tbody><tr class="notes"><th></th>${cells(sl(key.upNotes))}</tr>`;
+    if (showRH) html += `<tr><th>RH</th>${cells(sl(key.fingering.rh))}</tr>`;
+    if (showLH) html += `<tr><th>LH</th>${cells(sl(key.fingering.lh))}</tr>`;
+    html += '</tbody></table>';
+  }
+  html += `<p class="note">Ascending shown; use the same fingers in reverse on the way down. 1 = thumb.</p>`;
   $('fingerings').innerHTML = html;
 }
 
@@ -210,9 +221,9 @@ function renderStats() {
 }
 
 function renderSettings() {
-  for (const [segId, k] of [['modeSeg', 'mode'], ['handSeg', 'hand']]) {
+  for (const [segId, k] of [['modeSeg', 'mode'], ['handSeg', 'hand'], ['octSeg', 'octaves']]) {
     for (const b of $(segId).querySelectorAll('button')) {
-      const on = b.dataset.val === settings[k];
+      const on = b.dataset.val === String(settings[k]);
       b.classList.toggle('on', on);
       b.setAttribute('aria-checked', on);
       b.setAttribute('role', 'radio');
@@ -224,13 +235,20 @@ function renderSettings() {
 
 // ---------- keyboard ----------
 let kb = null;
+let kbRange = '';
+// Both hands over two octaves needs C2–C6; everything else fits in C3–C6.
+function buildKeyboard() {
+  const low = settings.hand === 'both' && settings.octaves === 2 ? 36 : 48;
+  const range = `${low}-84`;
+  if (kb && range === kbRange) return;
+  kbRange = range;
+  kb = createKeyboard($('keyboard'), { low, high: 84, onPress: (n) => handleNote(n, true) });
+}
 function setKeyboardVisible(show) {
   save('keyboard', show);
   $('kbWrap').hidden = !show;
   $('kbBtn').textContent = show ? 'Hide keyboard' : 'Show keyboard';
-  if (show && !kb) {
-    kb = createKeyboard($('keyboard'), { low: 48, high: 84, onPress: (n) => handleNote(n, true) });
-  }
+  if (show) buildKeyboard();
   if (show) {
     // Center on middle C.
     const w = $('kbWrap');
@@ -268,6 +286,15 @@ function bind() {
     renderSettings();
     renderFingerings();
     resetRun();
+    if (!$('kbWrap').hidden) setKeyboardVisible(true);
+  });
+  $('octSeg').addEventListener('click', (e) => {
+    const v = Number(e.target.dataset?.val);
+    if (!v || v === settings.octaves) return;
+    save('octaves', v);
+    renderSettings();
+    loadKey();
+    if (!$('kbWrap').hidden) setKeyboardVisible(true);
   });
   $('orderSel').addEventListener('change', (e) => {
     save('order', e.target.value);

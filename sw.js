@@ -1,5 +1,5 @@
 // Network-first with offline fallback, so updates show up right away.
-const CACHE = 'scale-trainer-v1';
+const CACHE = 'scale-trainer-v2';
 const FILES = ['./', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/theory.js', 'js/keysig.js', 'js/keyboard.js', 'js/audio.js', 'js/midi.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];

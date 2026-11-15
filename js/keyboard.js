@@ -12,6 +12,7 @@ export function createKeyboard(container, { low = 48, high = 84, onPress }) {
   const whites = [];
   for (let n = low; n <= high; n++) if (!BLACK.has(n % 12)) whites.push(n);
   const whiteW = 100 / whites.length;
+  wrap.style.minWidth = `${whites.length * 29}px`;
   const keys = new Map();
 
   let whiteIndex = 0;

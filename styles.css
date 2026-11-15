@@ -62,9 +62,9 @@ main { max-width: 760px; margin: 0 auto; padding: 8px 16px 24px; }
 .keysig-label { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
 .progress { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 20px 0 6px; }
-.prow { display: flex; gap: 5px; align-items: center; }
-.prow .arrow { width: 16px; color: var(--muted); font-size: 14px; }
-.prow:last-child { margin-right: 39px; }
+.prow { display: flex; gap: 6px; align-items: flex-start; width: 100%; justify-content: center; }
+.pdots { display: flex; flex-wrap: wrap; gap: 5px; justify-content: flex-start; max-width: calc(8 * 38px); }
+.prow .arrow { width: 16px; color: var(--muted); font-size: 14px; line-height: 33px; }
 .pdot {
   width: 33px; height: 33px; border-radius: 50%;
   background: var(--panel-2); display: grid; place-items: center;
@@ -92,6 +92,7 @@ main { max-width: 760px; margin: 0 auto; padding: 8px 16px 24px; }
 .fingerings th { color: var(--muted); font-weight: 600; text-align: right; }
 .fingerings tr.notes td { font-weight: 700; border-bottom: 1px solid #ffffff20; }
 .fingerings td { font-variant-numeric: tabular-nums; font-size: 18px; }
+.fingerings .oct-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin: 10px 0 2px; }
 .fingerings .note { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 
 .stats { color: var(--muted); font-size: 13px; margin: 14px 0 0; }
@@ -103,7 +104,7 @@ main { max-width: 760px; margin: 0 auto; padding: 8px 16px 24px; }
 .midi.connected .dot { background: var(--good); box-shadow: 0 0 8px var(--good); }
 
 .kb-scroll { overflow-x: auto; border-radius: 10px; -webkit-overflow-scrolling: touch; }
-.kb { position: relative; height: 170px; min-width: 640px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.kb { position: relative; height: 170px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .key { position: absolute; top: 0; border: 0; padding: 0; }
 .key.white {
   height: 100%; background: #f7f7f2; border-right: 1px solid #bbb;
@@ -116,6 +117,3 @@ main { max-width: 760px; margin: 0 auto; padding: 8px 16px 24px; }
 
 [hidden] { display: none !important; }
 
-@media (min-width: 700px) {
-  .kb { min-width: 0; }
-}
