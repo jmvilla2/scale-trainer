@@ -1,8 +1,8 @@
-import { KEYS, buildKey, prettyName } from './theory.js';
-import { renderKeySignature } from './keysig.js';
-import { createKeyboard } from './keyboard.js';
-import { initMIDI } from './midi.js';
-import { playNote, playSuccess, unlockAudio } from './audio.js';
+import { KEYS, buildKey, prettyName } from './theory.js?v=3';
+import { renderKeySignature } from './keysig.js?v=3';
+import { createKeyboard } from './keyboard.js?v=3';
+import { initMIDI } from './midi.js?v=3';
+import { playNote, playSuccess, unlockAudio } from './audio.js?v=3';
 
 const $ = (id) => document.getElementById(id);
 const mod = (n, m) => ((n % m) + m) % m;
@@ -332,5 +332,5 @@ setKeyboardVisible(settings.keyboard);
 initMIDI({ onNote: (n) => handleNote(n, false), onStatus: onMidiStatus });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
+  navigator.serviceWorker.register('sw.js?v=3').catch(() => {});
 }
